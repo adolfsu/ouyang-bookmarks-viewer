@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>欧阳的收藏夹 · WebDAV 只读查看器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23b5672a'/%3E%3Cpath d='M18 22h12l4 5h12a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H18a3 3 0 0 1-3-3V25a3 3 0 0 1 3-3z' fill='%23fff'/%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface-2: #f1efe9;
+    --border: #e5e2da;
+    --text: #23211b;
+    --text-2: #6b675c;
+    --text-3: #9a958a;
+    --accent: #b5672a;
+    --accent-soft: #f4e6d8;
+    --tag-bg: #ecebe6;
+    --danger: #b3402f;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(35,33,27,.04), 0 4px 16px rgba(35,33,27,.05);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  /* ===== 顶栏 ===== */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(247,246,243,.92);
+    backdrop-filter: saturate(140%) blur(8px);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px;
+  }
+  .topbar-row {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand {
+    font-weight: 700; font-size: 16px; letter-spacing: .2px;
+    display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  }
+  .brand-dot {
+    width: 10px; height: 10px; border-radius: 3px;
+    background: var(--accent); display: inline-block;
+  }
+  .search-wrap { flex: 1; min-width: 0; position: relative; }
+  .search-wrap svg {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; color: var(--text-3); pointer-events: none;
+  }
+  .search {
+    width: 100%;
+    padding: 9px 12px 9px 34px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: 16px;
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s;
+  }
+  .search:focus { border-color: var(--accent); }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-2);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .icon-btn:hover { color: var(--text); background: var(--surface-2); }
+
+  /* ===== 工具行 ===== */
+  .toolbar {
+    max-width: 1100px; margin: 12px auto 0;
+    padding: 0 16px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .chip {
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 13px; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chip.active {
+    background: var(--text); color: #fff; border-color: var(--text);
+  }
+  .chip .count { color: var(--text-3); font-size: 11px; }
+  .chip.active .count { color: rgba(255,255,255,.7); }
+
+  .tag-cloud {
+    max-width: 1100px; margin: 8px auto 0; padding: 0 16px;
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .tag {
+    padding: 3px 10px; border-radius: 999px;
+    background: var(--tag-bg); color: var(--text-2);
+    font-size: 12px; cursor: pointer;
+  }
+  .tag.active { background: var(--accent); color: #fff; }
+
+  /* ===== 统计条 ===== */
+  .stats {
+    max-width: 1100px; margin: 10px auto 0; padding: 0 16px;
+    color: var(--text-3); font-size: 12px;
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
+
+  /* ===== 书签网格 ===== */
+  .grid {
+    max-width: 1100px; margin: 14px auto 60px;
+    padding: 0 16px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  @media (min-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (min-width: 900px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+    transition: box-shadow .15s, transform .15s;
+    min-width: 0;
+  }
+  .card:hover { box-shadow: var(--shadow); }
+  .card-head { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+  .favicon {
+    width: 32px; height: 32px; border-radius: 7px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px; flex-shrink: 0;
+    overflow: hidden;
+  }
+  .favicon img { width: 100%; height: 100%; object-fit: cover; }
+  .card-title {
+    font-weight: 600; font-size: 14.5px; line-height: 1.4;
+    word-break: break-word;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-url {
+    font-size: 12px; color: var(--text-3);
+    word-break: break-all;
+    display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-desc {
+    font-size: 13px; color: var(--text-2); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden; word-break: break-word;
+  }
+  .card-meta {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    margin-top: auto;
+  }
+  .badge {
+    font-size: 11px; padding: 2px 8px; border-radius: 4px;
+    background: var(--surface-2); color: var(--text-2);
+  }
+  .badge.cat { background: var(--accent-soft); color: var(--accent); }
+  .date { font-size: 11px; color: var(--text-3); margin-left: auto; }
+
+  /* ===== 空状态 / 加载 ===== */
+  .empty {
+    max-width: 1100px; margin: 60px auto; padding: 0 16px;
+    text-align: center; color: var(--text-3);
+  }
+  .empty h3 { color: var(--text-2); margin: 0 0 6px; font-size: 16px; }
+  .loading { text-align: center; padding: 40px 16px; color: var(--text-3); }
+  .spinner {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    margin: 0 auto 12px; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== 配置弹窗 ===== */
+  .modal-mask {
+    position: fixed; inset: 0; background: rgba(35,33,27,.4);
+    z-index: 50; display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-mask.open { display: flex; }
+  .modal {
+    background: var(--surface); width: 100%; max-width: 480px;
+    border-radius: 16px 16px 0 0;
+    padding: 20px; max-height: 90vh; overflow-y: auto;
+  }
+  @media (min-width: 600px) {
+    .modal-mask { align-items: center; }
+    .modal { border-radius: 16px; }
+  }
+  .modal h2 { margin: 0 0 4px; font-size: 18px; }
+  .modal .sub { color: var(--text-3); font-size: 12.5px; margin-bottom: 16px; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 12.5px; color: var(--text-2); margin-bottom: 4px; }
+  .field input {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 16px; background: var(--surface); color: var(--text);
+    outline: none;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .field .hint { font-size: 11.5px; color: var(--text-3); margin-top: 4px; }
+  .row { display: flex; gap: 10px; margin-top: 16px; }
+  .btn {
+    flex: 1; padding: 11px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 15px;
+    cursor: pointer; font-weight: 500;
+  }
+  .btn.primary { background: var(--text); color: #fff; border-color: var(--text); }
+  .btn:active { transform: scale(.98); }
+  .err {
+    background: #fbeae5; color: var(--danger);
+    padding: 10px 12px; border-radius: 8px; font-size: 12.5px;
+    margin-top: 10px; display: none; line-height: 1.5;
+  }
+  .err.show { display: block; }
+  details.adv { margin-top: 12px; }
+  details.adv summary {
+    cursor: pointer; font-size: 12.5px; color: var(--text-3);
+    padding: 6px 0;
+  }
+
+  /* 连接状态提示 */
+  .conn-pill {
+    font-size: 11.5px; padding: 4px 10px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-3); white-space: nowrap;
+  }
+  .conn-pill.ok { color: #2e7d32; border-color: #c8e0c9; background: #eef6ee; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div class="brand"><span class="brand-dot"></span>欧阳的收藏夹</div>
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input class="search" id="search" type="search" placeholder="搜索标题、网址、标签…" />
+    </div>
+    <button class="icon-btn" id="open-settings" title="WebDAV 设置">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </div>
+</div>
+
+<div class="toolbar" id="category-bar"></div>
+<div class="tag-cloud" id="tag-cloud"></div>
+<div class="stats" id="stats"></div>
+
+<div id="content">
+  <div class="empty">
+    <h3>尚未连接 WebDAV</h3>
+    <p>点击右上角齿轮，填入你的 WebDAV 地址、用户名和密码，<br/>即可只读查看已同步的书签。</p>
+  </div>
+</div>
+
+<!-- 配置弹窗 -->
+<div class="modal-mask" id="modal-mask">
+  <div class="modal">
+    <h2>WebDAV 连接设置</h2>
+    <div class="sub">与浏览器扩展里填的地址、账号、密码完全一致。数据只在你的浏览器里读取，不会上传到任何第三方。</div>
+
+    <div class="field">
+      <label>WebDAV 服务器地址</label>
+      <input id="cfg-url" type="text" placeholder="https://dav.example.com/remote.php/dav/files/yourname/" />
+      <div class="hint">填到扩展里那一段（以 / 结尾或不结尾均可）</div>
+    </div>
+    <div class="field">
+      <label>用户名</label>
+      <input id="cfg-user" type="text" autocomplete="off" />
+    </div>
+    <div class="field">
+      <label>密码 / App Password</label>
+      <input id="cfg-pass" type="password" autocomplete="off" />
+    </div>
+
+    <details class="adv">
+      <summary>高级：CORS 代理前缀（直连失败时再用）</summary>
+      <div class="field" style="margin-top:10px;">
+        <input id="cfg-proxy" type="text" placeholder="https://corsproxy.io/?" />
+        <div class="hint">某些 WebDAV 服务器不允许浏览器跨域读取。直连报 CORS 错误时，可在此填一个公共 CORS 代理前缀（例如 https://corsproxy.io/?）。</div>
+      </div>
+    </details>
+
+    <div class="err" id="err"></div>
+
+    <div class="row">
+      <button class="btn" id="btn-cancel">取消</button>
+      <button class="btn primary" id="btn-save">连接并加载</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const STORAGE_KEY = 'ouyang-bookmarks-viewer-cfg-v1';
+
+  // ===== 状态 =====
+  let cfg = loadCfg();
+  let bookmarks = [];
+  let categories = [];
+  let activeCategory = 'all';
+  let activeTag = null;
+  let keyword = '';
+
+  // ===== 配置 =====
+  function loadCfg() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; }
+    catch { return {}; }
+  }
+  function saveCfg() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+  }
+
+  // ===== 打开/关闭弹窗 =====
+  const mask = $('modal-mask');
+  $('open-settings').addEventListener('click', () => {
+    $('cfg-url').value = cfg.url || '';
+    $('cfg-user').value = cfg.user || '';
+    $('cfg-pass').value = cfg.pass || '';
+    $('cfg-proxy').value = cfg.proxy || '';
+    $('err').classList.remove('show');
+    mask.classList.add('open');
+  });
+  $('btn-cancel').addEventListener('click', () => mask.classList.remove('open'));
+  mask.addEventListener('click', (e) => { if (e.target === mask) mask.classList.remove('open'); });
+
+  $('btn-save').addEventListener('click', async () => {
+    cfg = {
+      url: $('cfg-url').value.trim().replace(/\/+$/, ''),
+      user: $('cfg-user').value.trim(),
+      pass: $('cfg-pass').value,
+      proxy: $('cfg-proxy').value.trim(),
+    };
+    saveCfg();
+    $('err').classList.remove('show');
+    await loadAll();
+    mask.classList.remove('open');
+  });
+
+  // ===== WebDAV 请求 =====
+  function joinUrl(path) {
+    let url = cfg.url + path;
+    if (cfg.proxy) {
+      if (cfg.proxy.includes('?')) url = cfg.proxy + encodeURIComponent(url);
+      else url = cfg.proxy + url;
+    }
+    return url;
+  }
+
+  async function fetchJson(path) {
+    const res = await fetch(joinUrl(path), {
+      method: 'GET',
+      headers: {
+        'Authorization': 'Basic ' + btoa(cfg.user + ':' + cfg.pass),
+        'Accept': 'application/json,text/plain,*/*',
+      },
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + res.statusText);
+    return await res.json();
+  }
+
+  async function loadAll() {
+    if (!cfg.url) {
+      $('content').innerHTML = '<div class="empty"><h3>尚未连接 WebDAV</h3><p>点击右上角齿轮填入连接信息。</p></div>';
+      return;
+    }
+    $('content').innerHTML = '<div class="loading"><div class="spinner"></div>正在从 WebDAV 读取…</div>';
+    try {
+      const [meta, cats] = await Promise.all([
+        fetchJson('/HamHomeSync/bookmarks/meta.json'),
+        fetchJson('/HamHomeSync/categories.json').catch(() => []),
+      ]);
+      bookmarks = (meta.bookmarks || []).filter(b => !b.isDeleted);
+      categories = Array.isArray(cats) ? cats : [];
+      renderAll();
+    } catch (e) {
+      console.error(e);
+      $('content').innerHTML = '<div class="empty"><h3>读取失败</h3><p>' + escapeHtml(String(e.message || e)) + '</p>' +
+        '<p style="font-size:12.5px;max-width:420px;margin:10px auto;text-align:left;">' +
+        '可能原因：<br/>1. 地址/账号/密码填错（HTTP 401/403）<br/>' +
+        '2. WebDAV 服务器不允许浏览器跨域读取（CORS）——打开设置，在「高级」里填一个 CORS 代理前缀<br/>' +
+        '3. 尚未在扩展里同步过，WebDAV 上没有 HamHomeSync 目录' +
+        '</p></div>';
+    }
+  }
+
+  // ===== 渲染 =====
+  function catName(id) {
+    if (!id) return null;
+    const c = categories.find(x => x.id === id);
+    return c ? c.name : null;
+  }
+
+  function renderAll() {
+    renderCategoryBar();
+    renderTagCloud();
+    renderStats();
+    renderGrid();
+  }
+
+  function renderCategoryBar() {
+    const bar = $('category-bar');
+    const counts = { all: bookmarks.length };
+    for (const b of bookmarks) {
+      const cid = b.categoryId || 'none';
+      counts[cid] = (counts[cid] || 0) + 1;
+    }
+    let html = '<span class="chip ' + (activeCategory==='all'?'active':'') + '" data-cat="all">全部 <span class="count">' + counts.all + '</span></span>';
+    html += '<span class="chip ' + (activeCategory==='none'?'active':'') + '" data-cat="none">未分类 <span class="count">' + (counts.none||0) + '</span></span>';
+    for (const c of categories) {
+      if (!counts[c.id]) continue;
+      html += '<span class="chip ' + (activeCategory===c.id?'active':'') + '" data-cat="' + escapeHtml(c.id) + '">' + escapeHtml(c.name) + ' <span class="count">' + counts[c.id] + '</span></span>';
+    }
+    bar.innerHTML = html;
+    bar.querySelectorAll('.chip').forEach(el => {
+      el.addEventListener('click', () => {
+        activeCategory = el.dataset.cat;
+        renderAll();
+      });
+    });
+  }
+
+  function renderTagCloud() {
+    const cloud = $('tag-cloud');
+    const counts = {};
+    for (const b of filteredBookmarks()) {
+      for (const t of (b.tags || [])) counts[t] = (counts[t] || 0) + 1;
+    }
+    const tags = Object.entries(counts).sort((a,b) => b[1]-a[1]).slice(0, 30);
+    cloud.innerHTML = tags.map(([t, n]) =>
+      '<span class="tag ' + (activeTag===t?'active':'') + '" data-tag="' + escapeHtml(t) + '">#' + escapeHtml(t) + ' <span style="opacity:.6">' + n + '</span></span>'
+    ).join('');
+    cloud.querySelectorAll('.tag').forEach(el => {
+      el.addEventListener('click', () => {
+        activeTag = (activeTag === el.dataset.tag) ? null : el.dataset.tag;
+        renderAll();
+      });
+    });
+  }
+
+  function filteredBookmarks() {
+    let list = bookmarks;
+    if (activeCategory === 'all') {}
+    else if (activeCategory === 'none') list = list.filter(b => !b.categoryId);
+    else list = list.filter(b => b.categoryId === activeCategory);
+    if (activeTag) list = list.filter(b => (b.tags || []).includes(activeTag));
+    if (keyword) {
+      const k = keyword.toLowerCase();
+      list = list.filter(b =>
+        (b.title || '').toLowerCase().includes(k) ||
+        (b.url || '').toLowerCase().includes(k) ||
+        (b.description || '').toLowerCase().includes(k) ||
+        (b.tags || []).some(t => t.toLowerCase().includes(k))
+      );
+    }
+    return list;
+  }
+
+  function renderStats() {
+    const list = filteredBookmarks();
+    let html = '<span>显示 ' + list.length + ' / 共 ' + bookmarks.length + ' 条</span>';
+    if (activeTag) html += '<span id="clear-tag" style="cursor:pointer;color:var(--accent);">已过滤 #' + escapeHtml(activeTag) + ' ✕</span>';
+    $('stats').innerHTML = html;
+    const ct = $('clear-tag');
+    if (ct) ct.addEventListener('click', () => { activeTag = null; renderAll(); });
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function hostOf(url) {
+    try { return new URL(url).hostname.replace(/^www\./,''); }
+    catch { return url || ''; }
+  }
+
+  function letterOf(url) {
+    const h = hostOf(url);
+    return (h[0] || '?').toUpperCase();
+  }
+
+  function fmtDate(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+
+  function renderGrid() {
+    const list = filteredBookmarks();
+    if (!list.length) {
+      $('content').innerHTML = '<div class="empty"><h3>没有匹配的书签</h3><p>试试换个关键词，或清除筛选。</p></div>';
+      return;
+    }
+    list.sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    $('content').innerHTML = '<div class="grid">' + list.map(b => {
+      const title = b.title || b.url || '(无标题)';
+      const desc = b.description || '';
+      const cname = catName(b.categoryId);
+      const tagsHtml = (b.tags || []).slice(0, 4).map(t =>
+        '<span class="badge">#' + escapeHtml(t) + '</span>'
+      ).join('');
+      return '<a class="card" href="' + escapeHtml(b.url) + '" target="_blank" rel="noopener noreferrer">' +
+        '<div class="card-head">' +
+          '<div class="favicon">' + escapeHtml(letterOf(b.url)) + '</div>' +
+          '<div style="min-width:0;flex:1;">' +
+            '<div class="card-title">' + escapeHtml(title) + '</div>' +
+            '<div class="card-url">' + escapeHtml(hostOf(b.url)) + '</div>' +
+          '</div>' +
+        '</div>' +
+        (desc ? '<div class="card-desc">' + escapeHtml(desc) + '</div>' : '') +
+        '<div class="card-meta">' +
+          (cname ? '<span class="badge cat">' + escapeHtml(cname) + '</span>' : '') +
+          tagsHtml +
+          '<span class="date">' + fmtDate(b.updatedAt) + '</span>' +
+        '</div>' +
+      '</a>';
+    }).join('') + '</div>';
+  }
+
+  // ===== 搜索 =====
+  let searchTimer;
+  $('search').addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      keyword = e.target.value.trim();
+      renderAll();
+    }, 120);
+  });
+
+  // ===== 启动 =====
+  if (cfg.url && cfg.user) loadAll();
+})();
+</script>
+</body>
+</html>
