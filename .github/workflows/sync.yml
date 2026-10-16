@@ -1,0 +1,57 @@
+name: Sync bookmarks from WebDAV
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull from WebDAV
+        env:
+          WEBDAV_URL: ${{ secrets.WEBDAV_URL }}
+          WEBDAV_USER: ${{ secrets.WEBDAV_USER }}
+          WEBDAV_PASS: ${{ secrets.WEBDAV_PASS }}
+        run: |
+          mkdir -p data
+          curl -sS --max-time 30 \
+            -u "$WEBDAV_USER:$WEBDAV_PASS" \
+            "$WEBDAV_URL/HamHomeSync/bookmarks/meta.json" \
+            -o data/meta.json
+          curl -sS --max-time 30 \
+            -u "$WEBDAV_USER:$WEBDAV_PASS" \
+            "$WEBDAV_URL/HamHomeSync/categories.json" \
+            -o data/categories.json
+
+      - name: Merge into bookmarks.json
+        run: |
+          python3 <<'EOF'
+          import json, io, datetime
+          meta = json.load(io.open('data/meta.json', encoding='utf-8'))
+          cats = json.load(io.open('data/categories.json', encoding='utf-8'))
+          out = {
+              'bookmarks': meta.get('bookmarks', []),
+              'categories': cats,
+              'updatedAt': datetime.datetime.utcnow().isoformat() + 'Z',
+          }
+          io.open('data/bookmarks.json', 'w', encoding='utf-8').write(
+              json.dumps(out, ensure_ascii=False))
+          print('bookmarks:', len(out['bookmarks']), 'categories:', len(out['categories']))
+          EOF
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/bookmarks.json
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "chore: sync bookmarks $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+          fi
