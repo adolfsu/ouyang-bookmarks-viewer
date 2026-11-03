@@ -1,8 +1,8 @@
 name: Sync bookmarks from WebDAV
 
+# 仅手动触发：Actions → Sync bookmarks from WebDAV → Run workflow
+# 不配置定时任务，数据只在需要时刷新
 on:
-  # schedule:
-  #   - cron: '15 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +29,6 @@ jobs:
           WEBDAV_PASS: ${{ secrets.WEBDAV_PASS }}
         run: |
           mkdir -p data
-          echo "URL base: $WEBDAV_URL"
           echo "Downloading meta.json..."
           curl -fL --retry 2 --retry-delay 2 -sS \
             -u "$WEBDAV_USER:$WEBDAV_PASS" \
@@ -40,11 +39,16 @@ jobs:
             -u "$WEBDAV_USER:$WEBDAV_PASS" \
             -w "HTTP_CODE:%{http_code} SIZE:%{size_download}\n" \
             "$WEBDAV_URL/HamHomeSync/categories.json" -o data/categories.json
-          echo "--- meta.json head ---"
-          head -c 300 data/meta.json; echo
-          echo "--- categories.json head ---"
-          head -c 300 data/categories.json; echo
-          ls -la data/
+          echo "--- 数据校验（只打印条目数量，不打印内容）---"
+          python - <<'PY'
+          import json
+          with open('data/meta.json', encoding='utf-8') as f:
+              meta = json.load(f)
+          with open('data/categories.json', encoding='utf-8') as f:
+              cats = json.load(f)
+          bm = meta.get('bookmarks', []) if isinstance(meta, dict) else meta
+          print(f'bookmarks: {len(bm)} | categories: {len(cats)}')
+          PY
 
       - name: Merge and encrypt
         env:
