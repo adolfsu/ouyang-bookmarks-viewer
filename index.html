@@ -372,6 +372,132 @@
   .switch.on { background: rgba(79,209,255,.28); border-color: rgba(79,209,255,.5); }
   .switch.on::after { transform: translateX(18px); background: var(--accent); }
 
+  /* ===== 浏览模式切换 ===== */
+  .mode-row { display: flex; gap: 6px; padding: 0 16px 2px; }
+  .mode-btn { flex: 1; padding: 7px 0; border-radius: 7px; font-size: 12px; cursor: pointer;
+    background: rgba(90,170,255,.05); border: 1px solid rgba(90,170,255,.12); color: var(--text-2);
+    transition: color .18s, border-color .18s, background .18s; }
+  .mode-btn:hover { color: var(--text); border-color: var(--border-2); }
+  .mode-btn.is-active { background: var(--accent-soft); border-color: rgba(79,209,255,.45); color: var(--accent); }
+  .mode-sub { padding: 6px 16px 8px; font-size: 10.5px; color: var(--text-3); }
+
+  /* ===== 档案馆模式 ===== */
+  .grid.arch { display: block; }
+  .arch-head { padding: 6px 2px 14px; }
+  .arch-title { font-size: 20px; font-weight: 500; letter-spacing: .14em; }
+  .arch-sub { margin-top: 5px; font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+  .arch-rule { margin-top: 12px; height: 1px; background: var(--border); }
+  .shelf-row {
+    display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 12px; margin-bottom: 9px;
+    cursor: pointer; text-align: left; position: relative; overflow: hidden; border-radius: 10px;
+    background: linear-gradient(180deg, rgba(16,29,49,.72), rgba(11,21,36,.92)); border: 1px solid var(--border);
+    transition: border-color .2s, transform .16s;
+  }
+  .shelf-row:hover { border-color: var(--border-2); }
+  .shelf-row:active { transform: scale(.99); }
+  .shelf-band { width: 5px; align-self: stretch; border-radius: 3px; flex-shrink: 0; }
+  .shelf-info { flex: 1; min-width: 0; }
+  .shelf-name { display: block; font-size: 14px; font-weight: 500; color: #E4EEFB; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .shelf-meta { display: block; margin-top: 3px; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
+  .shelf-n { font-family: var(--mono); font-size: 15px; color: var(--accent); flex-shrink: 0; }
+  .arch-note { padding: 14px 2px 64px; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
+
+  .fold-head { display: flex; align-items: flex-start; gap: 10px; padding: 4px 2px 12px; }
+  .fold-back { flex-shrink: 0; margin-top: 3px; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+    background: none; border: 1px solid var(--border); color: var(--text-2); font-size: 12px; transition: color .2s, border-color .2s; }
+  .fold-back:hover { color: var(--accent); border-color: var(--border-2); }
+  .fold-name { font-size: 19px; font-weight: 500; color: #EAF2FD; word-break: break-word; }
+  .fold-meta { margin-top: 4px; font-family: var(--mono); font-size: 11px; color: var(--text-2); }
+  .stamp { display: inline-block; margin-left: 8px; padding: 2px 8px; vertical-align: 2px;
+    border: 1.5px solid var(--danger); color: var(--danger); border-radius: 4px;
+    font-size: 10.5px; font-weight: 400; transform: rotate(-4deg); opacity: .92; }
+  .stamp.dim { border-color: var(--text-3); color: var(--text-3); }
+
+  details.toc { margin: 2px 0 14px; border: 1px dashed var(--border-2); border-radius: 10px; background: rgba(11,21,36,.5); }
+  details.toc summary { cursor: pointer; padding: 10px 14px; font-family: var(--mono); font-size: 11.5px; color: var(--text-2); list-style: none; }
+  details.toc summary::-webkit-details-marker { display: none; }
+  details.toc summary::after { content: ' ▸'; color: var(--text-3); }
+  details.toc[open] summary::after { content: ' ▾'; }
+  .toc-item { display: flex; gap: 10px; width: 100%; padding: 7px 14px; background: none; border: none; border-top: 1px dashed var(--border);
+    color: var(--text-2); font-size: 12.5px; cursor: pointer; text-align: left; transition: color .15s; }
+  .toc-item:hover { color: var(--accent); }
+  .toc-no { font-family: var(--mono); font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+  .toc-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .acard {
+    position: relative; display: block; margin-bottom: 12px; padding: 16px 18px 13px 16px;
+    background: linear-gradient(180deg, rgba(16,29,49,.72), rgba(11,21,36,.92));
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    opacity: 0; transform: translateY(12px); transition: transform .16s ease, border-color .2s;
+  }
+  .acard.in { opacity: 1; transform: none; animation: cardIn .42s cubic-bezier(.22,.9,.28,1) backwards; animation-delay: calc(var(--i, 0) * 16ms); }
+  .acard:hover { border-color: var(--border-2); }
+  .acard.in:active { transform: scale(.99); }
+  .acard-tab {
+    position: absolute; top: 0; left: 0; height: 20px; padding: 0 24px 0 12px;
+    font-family: var(--mono); font-size: 10px; line-height: 20px; color: var(--accent);
+    background: var(--surface-2); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+  }
+  .acard-hole { position: absolute; right: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--bg); border: 1px solid rgba(90,170,255,.35); }
+  .acard-hole.h1 { top: 26%; }
+  .acard-hole.h2 { bottom: 26%; }
+  .acard-title {
+    margin: 12px 0 3px; font-size: 14.5px; font-weight: 500; line-height: 1.4; color: #E4EEFB; word-break: break-word;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .acard-meta { font-family: var(--mono); font-size: 11px; color: var(--accent); opacity: .8; }
+  .acard-tags { margin-top: 7px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .acard-stamp { position: absolute; right: 14px; top: 32px; padding: 2px 7px;
+    border: 1.5px solid #EF9F27; color: #EF9F27; border-radius: 4px; font-size: 10px; transform: rotate(8deg); opacity: .9; }
+
+  .d-arch {
+    display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 20px; padding: 10px 12px;
+    border: 1px dashed var(--border-2); border-radius: 9px; font-family: var(--mono); font-size: 11px; color: var(--text-2);
+  }
+  .d-arch b { color: var(--accent); font-weight: 400; }
+  .d-arch-nav { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+  .d-arch-nav button { background: none; border: 1px solid var(--border); color: var(--text-2); border-radius: 6px; padding: 4px 9px; font-size: 11px; cursor: pointer; transition: color .18s, border-color .18s; }
+  .d-arch-nav button:disabled { opacity: .35; cursor: default; }
+  .d-arch-nav button:hover:not(:disabled) { color: var(--accent); border-color: var(--border-2); }
+
+  /* ===== 极简模式：黑白双色，零装饰 ===== */
+  html.mode-mono { color-scheme: light; }
+  html.mode-mono body::before, html.mode-mono body::after { display: none; }
+  html.mode-mono .brand-dot { background: #111; box-shadow: none; }
+  html.mode-mono .gate-card { background: #fff; box-shadow: 0 16px 44px rgba(0,0,0,.1); }
+  html.mode-mono .gate-mark { border-color: #ddd; background: #f6f6f6; }
+  html.mode-mono .gate-mark::after { border-color: #111; }
+  html.mode-mono .gate input { background: #fafafa; border-color: #ddd; }
+  html.mode-mono .gate button { background: #111; color: #fff; }
+  html.mode-mono .topbar { background: rgba(255,255,255,.9); }
+  html.mode-mono .search { background: #f6f6f6; }
+  html.mode-mono .filter-btn { background: #fff; }
+  html.mode-mono .drawer { background: #fafafa; box-shadow: 24px 0 60px rgba(0,0,0,.12); }
+  html.mode-mono .drawer-foot { background: rgba(255,255,255,.7); }
+  html.mode-mono .card { background: #fff; }
+  html.mode-mono .card:hover { background: #fafafa; box-shadow: 0 8px 20px rgba(0,0,0,.06); }
+  html.mode-mono .card::before, html.mode-mono .card::after { display: none; }
+  html.mode-mono .card-title { color: #111; }
+  html.mode-mono .fav, html.mode-mono .d-fav { background: #f5f5f5; border-color: #e2e2e2; color: #333; }
+  html.mode-mono .fav img, html.mode-mono .d-fav img { filter: grayscale(1); background: none; }
+  html.mode-mono .chip-cat { color: #333; background: #f2f2f2; border-color: #e2e2e2; }
+  html.mode-mono .chip-tag { color: #555; background: #f7f7f7; border-color: #e5e5e5; }
+  html.mode-mono mark.hl { background: rgba(0,0,0,.1); color: #111; }
+  html.mode-mono .active-chip { color: #111; }
+  html.mode-mono .primary-btn { background: #111; color: #fff; }
+  html.mode-mono .detail-bar, html.mode-mono .detail-actions { background: rgba(255,255,255,.95); }
+  html.mode-mono .d-url { background: #f7f7f7; color: #333; }
+  html.mode-mono .toast { background: #fff; }
+  html.mode-mono .pulse { background: #111; }
+  html.mode-mono .tag-pill, html.mode-mono .sort-btn, html.mode-mono .mode-btn { background: #f6f6f6; border-color: #e5e5e5; }
+  html.mode-mono .row:hover { background: #f2f2f2; }
+  html.mode-mono .row.is-active { background: #f2f2f2; color: #111; }
+  html.mode-mono .row.is-active .n { color: #333; }
+  html.mode-mono .row.is-active::before { background: #111; }
+  html.mode-mono .tag-pill.is-active, html.mode-mono .sort-btn.is-active, html.mode-mono .mode-btn.is-active { background: #eee; border-color: #999; color: #111; }
+  html.mode-mono .stats .right, html.mode-mono .card-date { color: #999; }
+
   /* 动效开关是唯一权威：系统 prefers-reduced-motion 只决定开关初始值（见 JS） */
   html.no-anim *, html.no-anim *::before, html.no-anim *::after {
     animation-duration: .001ms !important; animation-delay: 0ms !important;
@@ -402,7 +528,7 @@
       <div class="brand">
         <span class="brand-dot"></span>
         <span class="brand-text">欧阳的收藏夹</span>
-        <span class="brand-ver" id="brand-ver">v2.2.0</span>
+        <span class="brand-ver" id="brand-ver">v2.3.0</span>
       </div>
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>
@@ -452,6 +578,12 @@
     </div>
     <div class="sec">
       <div class="sec-title">界面</div>
+      <div class="mode-row" id="mode-list">
+        <button class="mode-btn" data-mode="mono">极简</button>
+        <button class="mode-btn" data-mode="classic">经典</button>
+        <button class="mode-btn" data-mode="archive">档案馆</button>
+      </div>
+      <div class="mode-sub" id="mode-sub"></div>
       <div class="set-row">
         <div>
           <div class="set-label">动画效果</div>
@@ -485,9 +617,10 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.2.0';
+  var VERSION = '2.3.0';
   var LS_KEY = 'ouyang-pwd';
   var ANIM_KEY = 'ouyang-anim';
+  var VIEW_KEY = 'ouyang-view';
 
   var $ = function (id) { return document.getElementById(id); };
   var bookmarks = [], categories = [], catMap = {}, byId = {}, updatedAt = '';
@@ -498,6 +631,10 @@
   try { var _sm = localStorage.getItem('ouyang-sort'); if (_sm) sortMode = _sm; } catch (e) {}
   var expanded = {};
   var openedFromList = false, currentId = null;
+  var archNum = {}, folders = [], folderId = null;
+  // 首次访问默认极简模式，此后跟随用户上次的选择
+  var viewMode = 'mono';
+  try { var _vm = localStorage.getItem(VIEW_KEY); if (_vm === 'mono' || _vm === 'classic' || _vm === 'archive') viewMode = _vm; } catch (e) {}
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -533,6 +670,14 @@
   }
   function letterOf(u) { var h = hostOf(u); return (h.charAt(0) || '?').toUpperCase(); }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function pad3(n) { return n < 10 ? '00' + n : n < 100 ? '0' + n : '' + n; }
+  // 分类色带：由分类名哈希出固定色相，同一分类永远同一颜色
+  function nameHue(name) {
+    var s = String(name || ''), h = 0;
+    for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 997;
+    return h % 360;
+  }
   function fmtDate(ts) { if (!ts) return ''; var d = new Date(ts); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
   function fmtDateTime(ts) {
     if (!ts) return '—';
@@ -631,6 +776,25 @@
       node.children.sort(function (a, b) { return catCounts[b.id] - catCounts[a.id]; });
       node.leaf = (node.children.length === 1 && node.children[0].name === g);
     });
+
+    // 档案馆：按收录顺序编 OY 号；卷宗按最近收录排序
+    archNum = {};
+    var chrono = bookmarks.slice().sort(function (a, b) {
+      return (a.createdAt || 0) - (b.createdAt || 0) || (a.updatedAt || 0) - (b.updatedAt || 0);
+    });
+    chrono.forEach(function (b, i) { archNum[b.id] = i + 1; });
+
+    folders = categories.filter(function (c) { return catCounts[c.id]; }).map(function (c) {
+      var latest = 0;
+      bookmarks.forEach(function (b) { if (b.categoryId === c.id && (b.createdAt || 0) > latest) latest = b.createdAt || 0; });
+      return { id: c.id, name: c.name, count: catCounts[c.id], latest: latest, hue: nameHue(c.name) };
+    });
+    if (catCounts['none']) {
+      var latestNone = 0;
+      bookmarks.forEach(function (b) { if (!b.categoryId && (b.createdAt || 0) > latestNone) latestNone = b.createdAt || 0; });
+      folders.push({ id: 'none', name: '未归档', count: catCounts['none'], latest: latestNone, hue: 210 });
+    }
+    folders.sort(function (a, b) { return b.latest - a.latest; });
   }
 
   function inCat(b) {
@@ -676,10 +840,16 @@
   }
 
   function renderList() {
-    var list = filtered();
     renderActiveBar();
-    renderStats(list.length);
-    renderGrid(list);
+    if (viewMode === 'archive') {
+      renderArchive();
+    } else {
+      folderId = null;
+      $('grid').classList.remove('arch');
+      var list = filtered();
+      renderStats(list.length);
+      renderGrid(list);
+    }
     syncDrawer();
     $('btn-drawer').classList.toggle('on', (cat !== 'all') || !!tag || !!kw);
   }
@@ -728,7 +898,7 @@
     }, { rootMargin: '60px 0px' });
   }
   function mountCards(grid) {
-    var cards = grid.querySelectorAll('.card');
+    var cards = grid.querySelectorAll('.card, .acard');
     if (!cardIO) {
       for (var i = 0; i < cards.length; i++) cards[i].classList.add('in');
       return;
@@ -763,6 +933,104 @@
       '</article>';
     }).join('');
     mountCards(grid);
+  }
+
+  /* ===== 档案馆模式 ===== */
+  function bandColor(hue) { return 'hsl(' + hue + ',58%,56%)'; }
+  function isNew(b) { return !!b.createdAt && (Date.now() - b.createdAt) < 7 * 864e5; }
+  function isActive(latest) { return !!latest && (Date.now() - latest) < 30 * 864e5; }
+  function archHead(title, sub) {
+    return '<div class="arch-head"><div class="arch-title">' + esc(title) + '</div>' +
+      '<div class="arch-sub">' + esc(sub) + '</div><div class="arch-rule"></div></div>';
+  }
+  function acardHtml(b, i) {
+    var no = archNum[b.id] || 0;
+    var name = catName(b.categoryId);
+    var tags = (b.tags || []).slice(0, 3).map(function (t) {
+      return '<span class="chip-tag">#' + hl(t, kw) + '</span>';
+    }).join('');
+    return '<article class="acard" style="--i:' + (i < 40 ? i : 0) + '" data-id="' + esc(b.id) + '">' +
+      '<div class="acard-tab">OY-' + pad3(no) + '</div>' +
+      '<span class="acard-hole h1"></span><span class="acard-hole h2"></span>' +
+      (isNew(b) ? '<span class="acard-stamp">新收</span>' : '') +
+      '<div class="acard-title">' + hl(b.title || b.url || '(无标题)', kw) + '</div>' +
+      '<div class="acard-meta">' + hl(displayHost(b), kw) + ' · 收录 ' + fmtDate(b.createdAt) +
+        (name ? ' · ' + esc(shortCat(name)) : '') + '</div>' +
+      (tags ? '<div class="acard-tags">' + tags + '</div>' : '') +
+      '<button class="card-hit" data-open="' + esc(b.id) + '" aria-label="查看明细"></button>' +
+      '<a class="card-jump" href="' + esc(b.url) + '" target="_blank" rel="noopener noreferrer" aria-label="直接打开网站">↗</a>' +
+    '</article>';
+  }
+  function renderShelf() {
+    folderId = null;
+    var grid = $('grid');
+    var html = archHead('馆藏总目',
+      folders.length + ' 卷 · ' + bookmarks.length + ' 件' + (updatedAt ? ' · 数据 ' + fmtDate(updatedAt) : ''));
+    folders.forEach(function (f, i) {
+      html += '<button class="shelf-row" data-fold="' + esc(f.id) + '">' +
+        '<span class="shelf-band" style="background:' + bandColor(f.hue) + '"></span>' +
+        '<span class="shelf-info"><span class="shelf-name">' + esc(f.name) + '</span>' +
+        '<span class="shelf-meta">No.' + pad2(i + 1) + ' · ' + f.count + ' 件 · 最近收录 ' + (f.latest ? fmtDate(f.latest) : '—') + '</span></span>' +
+        '<span class="shelf-n">' + f.count + '</span></button>';
+    });
+    html += '<div class="arch-note">点击卷宗进入内页 · 内页左右滑动切换上一卷 / 下一卷</div>';
+    grid.innerHTML = html;
+  }
+  function renderFolder(fid) {
+    folderId = fid;
+    var f = null, idx = -1;
+    for (var i = 0; i < folders.length; i++) { if (folders[i].id === fid) { f = folders[i]; idx = i; break; } }
+    var grid = $('grid');
+    if (!f) { location.hash = ''; renderList(); return; }
+    var list = sorted(bookmarks.filter(function (b) {
+      return f.id === 'none' ? !b.categoryId : b.categoryId === f.id;
+    }));
+    var html = '<div class="fold-head"><button class="fold-back" data-fold-back="1">← 总目</button>' +
+      '<div style="flex:1;min-width:0"><div class="fold-name">' + esc(f.name) +
+      '<span class="stamp' + (isActive(f.latest) ? '' : ' dim') + '">' + (isActive(f.latest) ? '活跃' : '沉睡') + '</span></div>' +
+      '<div class="fold-meta">No.' + pad2(idx + 1) + ' / ' + folders.length + ' 卷 · ' + list.length + ' 件 · 最近收录 ' + (f.latest ? fmtDate(f.latest) : '—') + '</div></div></div>';
+    if (list.length) {
+      html += '<details class="toc"><summary>卷内目录 · ' + list.length + ' 件</summary>' +
+        list.map(function (b) {
+          return '<button class="toc-item" data-open="' + esc(b.id) + '"><span class="toc-no">' + pad3(archNum[b.id] || 0) + '</span><span class="toc-t">' + esc(b.title || b.url || '(无标题)') + '</span></button>';
+        }).join('') + '</details>';
+      html += list.map(acardHtml).join('');
+    } else {
+      html += '<div class="empty"><h3>空卷</h3><p>这一卷还没有收藏</p></div>';
+    }
+    html += '<div class="arch-note">← 左右滑动切换上一卷 / 下一卷 →</div>';
+    grid.innerHTML = html;
+    mountCards(grid);
+  }
+  function renderResults(list) {
+    folderId = null;
+    var grid = $('grid');
+    var title = kw ? ('检索：' + kw) : '筛选结果';
+    var html = archHead(title, '命中 ' + list.length + ' 件 · 来自全库检索');
+    html += list.length ? list.map(acardHtml).join('')
+      : '<div class="empty"><h3>没有匹配的收藏</h3><p>换个关键词，或清除筛选条件</p></div>';
+    html += '<div class="arch-note">筛选条件在抽屉中管理 · 清除后回到馆藏总目</div>';
+    grid.innerHTML = html;
+    if (list.length) mountCards(grid);
+  }
+  function renderArchive() {
+    $('stats').innerHTML = '';
+    var hasFilter = (cat !== 'all') || !!tag || !!kw;
+    if (hasFilter) { renderResults(filtered()); return; }
+    var m = location.hash.match(/^#\/c\/(.+)$/);
+    if (m) { renderFolder(decodeURIComponent(m[1])); return; }
+    renderShelf();
+  }
+  // 同卷相邻档案（按 OY 编号顺序），用于明细页的上一件 / 下一件
+  function sameFolderNeighbors(b) {
+    var fid = b.categoryId || 'none';
+    var sibs = bookmarks.filter(function (x) { return (x.categoryId || 'none') === fid; })
+      .sort(function (x, y) { return (archNum[x.id] || 0) - (archNum[y.id] || 0); });
+    var pos = 0, prev = null, next = null;
+    for (var i = 0; i < sibs.length; i++) {
+      if (sibs[i].id === b.id) { pos = i + 1; prev = sibs[i - 1] || null; next = sibs[i + 1] || null; break; }
+    }
+    return { pos: pos, total: sibs.length, prev: prev, next: next };
   }
 
   function buildDrawer() {
@@ -834,11 +1102,23 @@
     var tags = (b.tags || []).map(function (t) {
       return '<button class="d-tag" data-dtag="' + esc(t) + '">#' + esc(t) + '</button>';
     }).join('');
+    var archSec = '';
+    if (viewMode === 'archive') {
+      var no = archNum[b.id] || 0;
+      var nb = sameFolderNeighbors(b);
+      archSec = '<div class="d-arch"><span>档案编号 <b>OY-' + pad3(no) + '</b></span>' +
+        (name ? '<span>卷 · ' + esc(shortCat(name)) + '</span>' : '<span>未归档</span>') +
+        '<span class="d-arch-nav">' +
+          '<button data-anav="prev"' + (nb.prev ? '' : ' disabled') + '>← 上一件</button>' +
+          '<span>' + pad3(nb.pos) + ' / ' + pad3(nb.total) + '</span>' +
+          '<button data-anav="next"' + (nb.next ? '' : ' disabled') + '>下一件 →</button>' +
+        '</span></div>';
+    }
     $('detail-body').innerHTML =
       '<div class="d-hero">' + favHtml(b.favicon, 'd-fav') +
         '<div><h1 class="d-h1">' + esc(b.title || '(无标题)') + '</h1>' +
         '<div class="d-host">' + esc(hostOf(b.url)) + '</div></div>' +
-      '</div>' +
+      '</div>' + archSec +
       '<div class="d-sec"><div class="d-label">描述</div>' +
         (b.description ? '<p class="d-text">' + esc(b.description) + '</p>' : '<p class="d-text muted">这条书签没有描述</p>') +
       '</div>' +
@@ -873,8 +1153,13 @@
     var id = m ? decodeURIComponent(m[1]) : null;
     if (id && byId[id]) {
       if (currentId !== id) openDetail(id);
-    } else if (currentId) {
-      closeDetail();
+    } else {
+      if (currentId) closeDetail();
+      if (viewMode === 'archive') {
+        var mc = location.hash.match(/^#\/c\/(.+)$/);
+        var fid = mc ? decodeURIComponent(mc[1]) : null;
+        if (fid !== folderId) renderList();
+      }
     }
     if (!initial) openedFromList = false;
   }
@@ -962,6 +1247,34 @@
   });
   applyAnim();
 
+  // 浏览模式：极简（黑白零装饰）/ 经典（蓝黑科幻网格）/ 档案馆（卷宗结构）
+  var MODE_DESC = {
+    mono: '黑白极简 · 零装饰',
+    classic: '蓝黑科幻 · 卡片网格',
+    archive: '馆藏卷宗 · 编号档案卡'
+  };
+  function applyMode() {
+    document.documentElement.classList.toggle('mode-mono', viewMode === 'mono');
+    var nodes = $('mode-list').querySelectorAll('[data-mode]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].classList.toggle('is-active', nodes[i].getAttribute('data-mode') === viewMode);
+    }
+    $('mode-sub').textContent = MODE_DESC[viewMode];
+  }
+  $('mode-list').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-mode]');
+    if (!btn) return;
+    var m = btn.getAttribute('data-mode');
+    if (m === viewMode) return;
+    viewMode = m;
+    try { localStorage.setItem(VIEW_KEY, viewMode); } catch (err) {}
+    applyMode();
+    renderList();
+    closeDrawer();
+    if (window.scrollTo) window.scrollTo(0, 0);
+  });
+  applyMode();
+
   $('btn-clear').addEventListener('click', function () {
     cat = 'all'; tag = null; kw = ''; tagQ = '';
     $('search').value = '';
@@ -983,13 +1296,44 @@
 
   $('grid').addEventListener('click', function (e) {
     if (e.target.closest('.card-jump')) return;
+    var back = e.target.closest('[data-fold-back]');
+    if (back) { location.hash = ''; renderList(); return; }
+    var fold = e.target.closest('[data-fold]');
+    if (fold) {
+      var fid = fold.getAttribute('data-fold');
+      location.hash = '#/c/' + encodeURIComponent(fid);
+      renderList();
+      return;
+    }
     var hit = e.target.closest('[data-open]');
-    var card = e.target.closest('.card');
+    var card = e.target.closest('.card') || e.target.closest('.acard');
     var id = hit ? hit.getAttribute('data-open') : (card ? card.getAttribute('data-id') : null);
     if (!id) return;
     openedFromList = true;
     location.hash = '#/b/' + encodeURIComponent(id);
   });
+
+  // 档案馆：卷宗内页左右滑动切换上一卷 / 下一卷
+  var swX = 0, swY = 0, swValid = false;
+  $('grid').addEventListener('touchstart', function (e) {
+    if (viewMode !== 'archive' || !folderId || e.touches.length !== 1) { swValid = false; return; }
+    swX = e.touches[0].clientX; swY = e.touches[0].clientY; swValid = true;
+  }, { passive: true });
+  $('grid').addEventListener('touchend', function (e) {
+    if (!swValid || viewMode !== 'archive' || !folderId) return;
+    swValid = false;
+    var t = e.changedTouches[0];
+    var dx = t.clientX - swX, dy = t.clientY - swY;
+    if (Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 2) return;
+    var idx = -1;
+    for (var i = 0; i < folders.length; i++) { if (folders[i].id === folderId) { idx = i; break; } }
+    if (idx < 0) return;
+    var next = dx < 0 ? idx + 1 : idx - 1;
+    if (next < 0 || next >= folders.length) return;
+    location.hash = '#/c/' + encodeURIComponent(folders[next].id);
+    renderList();
+    toast('卷 · ' + folders[next].name);
+  }, { passive: true });
 
   $('btn-back').addEventListener('click', function () {
     if (openedFromList && history.length > 1) history.back();
@@ -997,6 +1341,15 @@
   });
 
   $('detail-body').addEventListener('click', function (e) {
+    var anav = e.target.closest('[data-anav]');
+    if (anav && !anav.disabled) {
+      var cur = byId[currentId];
+      if (!cur) return;
+      var nb = sameFolderNeighbors(cur);
+      var target = anav.getAttribute('data-anav') === 'prev' ? nb.prev : nb.next;
+      if (target) location.hash = '#/b/' + encodeURIComponent(target.id);
+      return;
+    }
     var dtag = e.target.closest('[data-dtag]');
     if (dtag) {
       tag = dtag.getAttribute('data-dtag');
