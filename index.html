@@ -381,6 +381,21 @@
   .mode-btn.is-active { background: var(--accent-soft); border-color: rgba(79,209,255,.45); color: var(--accent); }
   .mode-sub { padding: 6px 16px 8px; font-size: 10.5px; color: var(--text-3); }
 
+  /* ===== 内容筛选（规则式屏蔽） ===== */
+  .filt-row { cursor: pointer; }
+  .filt-row .set-label { color: var(--text); }
+  .filt-edit { padding: 8px 16px 10px; border-bottom: 1px dashed var(--border); }
+  .fchips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .fchip {
+    display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px;
+    font-size: 11px; font-family: var(--mono); color: var(--text-2);
+    background: rgba(90,170,255,.08); border: 1px solid rgba(90,170,255,.16);
+  }
+  .fchip button { border: none; background: none; color: var(--text-3); font-size: 11px; cursor: pointer; padding: 0 1px; line-height: 1; }
+  .fchip button:hover { color: #ff7d7d; }
+  .filt-actions { display: flex; gap: 8px; padding: 6px 16px 2px; }
+  .ghost-btn.danger { color: #ff8585; border-color: rgba(255,120,120,.3); }
+
   /* ===== 档案馆模式 ===== */
   .grid.arch { display: block; }
   .arch-head { padding: 6px 2px 14px; }
@@ -528,7 +543,7 @@
       <div class="brand">
         <span class="brand-dot"></span>
         <span class="brand-text">欧阳的收藏夹</span>
-        <span class="brand-ver" id="brand-ver">v2.3.0</span>
+        <span class="brand-ver" id="brand-ver">v2.4.0</span>
       </div>
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>
@@ -577,6 +592,20 @@
       <div class="tag-hint" id="tag-hint"></div>
     </div>
     <div class="sec">
+      <div class="sec-title">内容筛选</div>
+      <div id="filter-list"></div>
+      <div id="filter-add" style="display:none">
+        <input class="tag-search" id="filt-name" placeholder="筛选名称，如：屏蔽某类内容" style="margin-top:6px" />
+        <input class="tag-search" id="filt-tags" placeholder="要隐藏的标签，多个用逗号分隔" />
+        <div class="filt-actions">
+          <button class="ghost-btn" id="filt-save">保存</button>
+          <button class="ghost-btn" id="filt-cancel">取消</button>
+        </div>
+      </div>
+      <button class="link-btn" id="btn-add-filter">＋ 新增筛选</button>
+      <div class="tag-hint">开启的筛选会隐藏带有对应标签的条目，三种浏览模式通用</div>
+    </div>
+    <div class="sec">
       <div class="sec-title">界面</div>
       <div class="mode-row" id="mode-list">
         <button class="mode-btn" data-mode="mono">极简</button>
@@ -617,10 +646,50 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.3.0';
+  var VERSION = '2.4.0';
   var LS_KEY = 'ouyang-pwd';
   var ANIM_KEY = 'ouyang-anim';
   var VIEW_KEY = 'ouyang-view';
+  var FILTER_KEY = 'ouyang-filters-v1';
+
+  // 内置规则：屏蔽成人内容相关标签。匹配方式 = 标签名归一化后相等，
+  // 另对 nsfw / r18 / hentai / 🔞 做包含匹配（兼容 nsfw-art、R-18G 之类变体）
+  var DEFAULT_RULES = [{
+    id: 'sfw', name: 'SFW 模式', builtin: true,
+    tags: ['nsfw', 'r18', '18+', '18禁', 'adult', '成人', '成人内容', '色情', '绅士', '里番',
+      '工口', 'hentai', '🔞', '限制级', 'ero', 'erotic', '涩涩', '色色', '黄色', 'p站成人', 'OnlyFans']
+  }];
+  var filtRules = DEFAULT_RULES.slice();
+  var filtState = { sfw: true };   // 首次使用默认开启 SFW
+  var editRule = null;             // 当前展开编辑的规则 id
+  try {
+    var _fs = JSON.parse(localStorage.getItem(FILTER_KEY) || 'null');
+    if (_fs) {
+      if (Array.isArray(_fs.rules) && _fs.rules.length) {
+        filtRules = _fs.rules;
+        if (!filtRules.some(function (r) { return r.id === 'sfw'; })) filtRules.unshift(DEFAULT_RULES[0]);
+      }
+      if (_fs.on && typeof _fs.on === 'object') filtState = _fs.on;
+      if (!('sfw' in filtState)) filtState.sfw = true;
+    }
+  } catch (e) {}
+  function saveFilters() {
+    try { localStorage.setItem(FILTER_KEY, JSON.stringify({ rules: filtRules, on: filtState })); } catch (e) {}
+  }
+  function normTag(t) { return String(t || '').toLowerCase().replace(/[\s_\-·.]+/g, ''); }
+  function ruleHits(rule, tags) {
+    for (var i = 0; i < tags.length; i++) {
+      var nt = normTag(tags[i]);
+      if (!nt) continue;
+      for (var j = 0; j < rule.tags.length; j++) {
+        var rt = normTag(rule.tags[j]);
+        if (!rt) continue;
+        if (nt === rt) return true;
+        if ((rt === 'nsfw' || rt === 'r18' || rt === 'hentai' || rt === '🔞') && nt.indexOf(rt) >= 0) return true;
+      }
+    }
+    return false;
+  }
 
   var $ = function (id) { return document.getElementById(id); };
   var bookmarks = [], categories = [], catMap = {}, byId = {}, updatedAt = '';
@@ -632,6 +701,7 @@
   var expanded = {};
   var openedFromList = false, currentId = null;
   var archNum = {}, folders = [], folderId = null;
+  var hiddenSet = {}, hiddenCount = 0, visTotal = 0;
   // 首次访问默认极简模式，此后跟随用户上次的选择
   var viewMode = 'mono';
   try { var _vm = localStorage.getItem(VIEW_KEY); if (_vm === 'mono' || _vm === 'classic' || _vm === 'archive') viewMode = _vm; } catch (e) {}
@@ -723,6 +793,7 @@
         bookmarks = (data.bookmarks || []).filter(function (b) { return !b.isDeleted; });
         categories = data.categories || [];
         updatedAt = data.updatedAt || '';
+        computeFilters();
         buildIndex();
         try { localStorage.setItem(LS_KEY, pwd); } catch (e) {}
         $('gate').classList.add('leave');
@@ -744,12 +815,31 @@
       });
   }
 
+  // 计算内容筛选：命中任一启用规则的条目进入 hiddenSet
+  function computeFilters() {
+    hiddenSet = {}; hiddenCount = 0;
+    var active = filtRules.filter(function (r) { return filtState[r.id]; });
+    if (!active.length) { visTotal = bookmarks.length; return; }
+    for (var i = 0; i < bookmarks.length; i++) {
+      var b = bookmarks[i], tags = b.tags || [];
+      if (!tags.length) continue;
+      for (var j = 0; j < active.length; j++) {
+        if (ruleHits(active[j], tags)) { hiddenSet[b.id] = 1; hiddenCount++; break; }
+      }
+    }
+    visTotal = bookmarks.length - hiddenCount;
+  }
+  function isVisible(b) { return !hiddenSet[b.id]; }
+
   function buildIndex() {
-    byId = {}; catMap = {}; catCounts = {}; groupIds = {}; groupOrder = []; expanded = {};
+    byId = {}; catMap = {}; catCounts = {}; groupIds = {}; groupOrder = [];
     categories.forEach(function (c) { catMap[c.id] = c; });
 
+    var vis = bookmarks.filter(isVisible);
+    visTotal = vis.length;
+
     var tagTmp = {};
-    bookmarks.forEach(function (b) {
+    vis.forEach(function (b) {
       byId[b.id] = b;
       var key = b.categoryId || 'none';
       catCounts[key] = (catCounts[key] || 0) + 1;
@@ -765,7 +855,8 @@
     categories.forEach(function (c) {
       if (!catCounts[c.id]) return;
       var g = groupOf(c.name);
-      if (!groupIds[g]) { groupIds[g] = { total: 0, ids: {}, children: [], leaf: false }; groupOrder.push(g); expanded[g] = true; }
+      if (!groupIds[g]) { groupIds[g] = { total: 0, ids: {}, children: [], leaf: false }; groupOrder.push(g); }
+      if (expanded[g] === undefined) expanded[g] = true;
       groupIds[g].ids[c.id] = 1;
       groupIds[g].children.push(c);
       groupIds[g].total += catCounts[c.id];
@@ -786,12 +877,12 @@
 
     folders = categories.filter(function (c) { return catCounts[c.id]; }).map(function (c) {
       var latest = 0;
-      bookmarks.forEach(function (b) { if (b.categoryId === c.id && (b.createdAt || 0) > latest) latest = b.createdAt || 0; });
+      vis.forEach(function (b) { if (b.categoryId === c.id && (b.createdAt || 0) > latest) latest = b.createdAt || 0; });
       return { id: c.id, name: c.name, count: catCounts[c.id], latest: latest, hue: nameHue(c.name) };
     });
     if (catCounts['none']) {
       var latestNone = 0;
-      bookmarks.forEach(function (b) { if (!b.categoryId && (b.createdAt || 0) > latestNone) latestNone = b.createdAt || 0; });
+      vis.forEach(function (b) { if (!b.categoryId && (b.createdAt || 0) > latestNone) latestNone = b.createdAt || 0; });
       folders.push({ id: 'none', name: '未归档', count: catCounts['none'], latest: latestNone, hue: 210 });
     }
     folders.sort(function (a, b) { return b.latest - a.latest; });
@@ -808,7 +899,7 @@
     return true;
   }
   function filtered() {
-    var list = bookmarks.filter(inCat);
+    var list = bookmarks.filter(function (b) { return isVisible(b) && inCat(b); });
     if (tag) list = list.filter(function (b) { return (b.tags || []).indexOf(tag) >= 0; });
     if (kw) {
       var k = kw.toLowerCase();
@@ -873,9 +964,10 @@
       var d = new Date(updatedAt);
       right = '<span class="pulse"></span><span>' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + '</span>';
     }
+    var hid = hiddenCount ? ' · 已隐藏 <b>' + hiddenCount + '</b> 条' : '';
     $('stats').innerHTML = '<span>' + (kw
-      ? '“' + esc(kw) + '” 命中 <b>' + n + '</b> 条'
-      : '显示 <b>' + n + '</b> / 共 <b>' + bookmarks.length + '</b> 条') + '</span>' +
+      ? '“' + esc(kw) + '” 命中 <b>' + n + '</b> 条' + hid
+      : '显示 <b>' + n + '</b> / 共 <b>' + visTotal + '</b> 条' + hid) + '</span>' +
       '<span class="right">' + right + '</span>';
   }
 
@@ -965,7 +1057,8 @@
     folderId = null;
     var grid = $('grid');
     var html = archHead('馆藏总目',
-      folders.length + ' 卷 · ' + bookmarks.length + ' 件' + (updatedAt ? ' · 数据 ' + fmtDate(updatedAt) : ''));
+      folders.length + ' 卷 · ' + visTotal + ' 件' + (hiddenCount ? '（另隐藏 ' + hiddenCount + ' 件）' : '') +
+      (updatedAt ? ' · 数据 ' + fmtDate(updatedAt) : ''));
     folders.forEach(function (f, i) {
       html += '<button class="shelf-row" data-fold="' + esc(f.id) + '">' +
         '<span class="shelf-band" style="background:' + bandColor(f.hue) + '"></span>' +
@@ -983,7 +1076,7 @@
     var grid = $('grid');
     if (!f) { location.hash = ''; renderList(); return; }
     var list = sorted(bookmarks.filter(function (b) {
-      return f.id === 'none' ? !b.categoryId : b.categoryId === f.id;
+      return isVisible(b) && (f.id === 'none' ? !b.categoryId : b.categoryId === f.id);
     }));
     var html = '<div class="fold-head"><button class="fold-back" data-fold-back="1">← 总目</button>' +
       '<div style="flex:1;min-width:0"><div class="fold-name">' + esc(f.name) +
@@ -1024,7 +1117,7 @@
   // 同卷相邻档案（按 OY 编号顺序），用于明细页的上一件 / 下一件
   function sameFolderNeighbors(b) {
     var fid = b.categoryId || 'none';
-    var sibs = bookmarks.filter(function (x) { return (x.categoryId || 'none') === fid; })
+    var sibs = bookmarks.filter(function (x) { return isVisible(x) && (x.categoryId || 'none') === fid; })
       .sort(function (x, y) { return (archNum[x.id] || 0) - (archNum[y.id] || 0); });
     var pos = 0, prev = null, next = null;
     for (var i = 0; i < sibs.length; i++) {
@@ -1034,7 +1127,7 @@
   }
 
   function buildDrawer() {
-    var html = '<button class="row top-level" data-cat="all"><span class="caret blank"></span><span class="label">全部</span><span class="n">' + bookmarks.length + '</span></button>' +
+    var html = '<button class="row top-level" data-cat="all"><span class="caret blank"></span><span class="label">全部</span><span class="n">' + visTotal + '</span></button>' +
       '<button class="row top-level" data-cat="none"><span class="caret blank"></span><span class="label">未分类</span><span class="n">' + (catCounts['none'] || 0) + '</span></button>';
     groupOrder.forEach(function (g) {
       var node = groupIds[g];
@@ -1274,6 +1367,123 @@
     if (window.scrollTo) window.scrollTo(0, 0);
   });
   applyMode();
+
+  /* ===== 内容筛选 UI ===== */
+  function renderFilters() {
+    var html = filtRules.map(function (r) {
+      var on = !!filtState[r.id];
+      var sub = r.tags.length
+        ? esc(r.tags.slice(0, 4).join(' · ')) + (r.tags.length > 4 ? ' 等 ' + r.tags.length + ' 个标签' : '')
+        : '未设置标签';
+      var row = '<div class="set-row filt-row" data-rid="' + esc(r.id) + '">' +
+        '<div style="flex:1;min-width:0" data-redit="' + esc(r.id) + '">' +
+          '<div class="set-label">' + esc(r.name) + '</div>' +
+          '<div class="set-sub">' + sub + '</div></div>' +
+        '<button class="switch' + (on ? ' on' : '') + '" data-fswitch="' + esc(r.id) +
+          '" role="switch" aria-checked="' + on + '" aria-label="' + esc(r.name) + '"></button>' +
+        '</div>';
+      if (editRule === r.id) row += filtEditorHtml(r);
+      return row;
+    }).join('');
+    $('filter-list').innerHTML = html || '<div class="set-sub" style="padding:2px 16px 4px">暂无筛选规则</div>';
+  }
+  function filtEditorHtml(r) {
+    var chips = r.tags.map(function (t, i) {
+      return '<span class="fchip">' + esc(t) + '<button data-fdeltag="' + i + '" aria-label="移除标签">✕</button></span>';
+    }).join('');
+    return '<div class="filt-edit">' +
+      '<div class="fchips">' + (chips || '<span class="set-sub">还没有标签，在下方输入添加</span>') + '</div>' +
+      '<input class="tag-search" data-fnewtag placeholder="输入标签后回车添加，可一次加多个（逗号分隔）" />' +
+      (r.builtin ? '' : '<div class="filt-actions" style="padding:8px 0 0"><button class="ghost-btn danger" data-frmdel>删除此筛选</button></div>') +
+      '</div>';
+  }
+  // 规则或开关变化后：重算可见集 → 重建索引计数 → 重绘
+  function applyFilterChange() {
+    saveFilters();
+    computeFilters();
+    buildIndex();
+    buildDrawer();
+    renderList();
+  }
+  $('filter-list').addEventListener('click', function (e) {
+    var sw = e.target.closest('[data-fswitch]');
+    if (sw) {
+      var id = sw.getAttribute('data-fswitch');
+      filtState[id] = !filtState[id];
+      var rule = null;
+      filtRules.forEach(function (r) { if (r.id === id) rule = r; });
+      applyFilterChange();
+      toast((rule ? rule.name : '筛选') + (filtState[id] ? ' 已开启' : ' 已关闭'));
+      return;
+    }
+    var redit = e.target.closest('[data-redit]');
+    if (redit) {
+      var rid = redit.getAttribute('data-redit');
+      editRule = (editRule === rid) ? null : rid;
+      renderFilters();
+      return;
+    }
+    var del = e.target.closest('[data-fdeltag]');
+    if (del && editRule) {
+      filtRules.forEach(function (r) {
+        if (r.id === editRule) r.tags.splice(parseInt(del.getAttribute('data-fdeltag'), 10), 1);
+      });
+      applyFilterChange();
+      renderFilters();
+      return;
+    }
+    var rm = e.target.closest('[data-frmdel]');
+    if (rm && editRule) {
+      filtRules = filtRules.filter(function (r) { return r.id !== editRule; });
+      delete filtState[editRule];
+      editRule = null;
+      applyFilterChange();
+      renderFilters();
+      toast('筛选已删除');
+    }
+  });
+  $('filter-list').addEventListener('keydown', function (e) {
+    var input = e.target.closest('[data-fnewtag]');
+    if (!input || e.key !== 'Enter') return;
+    e.preventDefault();
+    var parts = input.value.split(/[,，、]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!parts.length) return;
+    filtRules.forEach(function (r) {
+      if (r.id === editRule) {
+        parts.forEach(function (p) {
+          var dup = r.tags.some(function (t) { return normTag(t) === normTag(p); });
+          if (!dup) r.tags.push(p);
+        });
+      }
+    });
+    input.value = '';
+    applyFilterChange();
+    renderFilters();
+  });
+  $('btn-add-filter').addEventListener('click', function () {
+    var box = $('filter-add');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+    if (box.style.display === 'block') $('filt-name').focus();
+  });
+  $('filt-cancel').addEventListener('click', function () {
+    $('filter-add').style.display = 'none';
+    $('filt-name').value = ''; $('filt-tags').value = '';
+  });
+  $('filt-save').addEventListener('click', function () {
+    var name = $('filt-name').value.trim();
+    var tags = $('filt-tags').value.split(/[,，、]/).map(function (s) { return s.trim(); }).filter(Boolean);
+    if (!name || !tags.length) { toast('需要名称和至少一个标签'); return; }
+    var nid = 'u' + Date.now();
+    filtRules.push({ id: nid, name: name, tags: tags });
+    filtState[nid] = false;
+    $('filter-add').style.display = 'none';
+    $('filt-name').value = ''; $('filt-tags').value = '';
+    renderFilters();
+    saveFilters();
+    toast('筛选已添加，可在列表中开启');
+  });
+  renderFilters();
+  computeFilters();
 
   $('btn-clear').addEventListener('click', function () {
     cat = 'all'; tag = null; kw = ''; tagQ = '';
