@@ -258,6 +258,17 @@
   .tag-pill .n { font-family: var(--mono); font-size: 10px; opacity: .6; margin-left: 3px; }
   .link-btn { display: block; margin: 10px 16px 0; padding: 6px 0; background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-align: left; }
   .link-btn:hover { text-decoration: underline; }
+  .sort-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px; }
+  .sort-btn {
+    padding: 5px 11px; border-radius: 6px; font-size: 12px; cursor: pointer;
+    background: rgba(90,170,255,.05); border: 1px solid rgba(90,170,255,.12); color: var(--text-2);
+    transition: color .18s, border-color .18s, background .18s;
+  }
+  .sort-btn:hover { color: var(--text); border-color: var(--border-2); }
+  .sort-btn.is-active { background: var(--accent-soft); border-color: rgba(79,209,255,.45); color: var(--accent); }
+  .tag-hint { padding: 8px 16px 0; font-size: 11px; line-height: 1.65; color: var(--text-3); }
+  .tag-hint b { font-family: var(--mono); font-weight: 400; color: var(--text-2); }
+  mark.hl { background: rgba(79,209,255,.2); color: #C6EDFF; border-radius: 2px; padding: 0 1px; }
   .drawer-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: rgba(5,10,18,.6); }
   .drawer-foot .c { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
   .ghost-btn {
@@ -349,7 +360,7 @@
       <div class="brand">
         <span class="brand-dot"></span>
         <span class="brand-text">欧阳的收藏夹</span>
-        <span class="brand-ver" id="brand-ver">v2.0.0</span>
+        <span class="brand-ver" id="brand-ver">v2.1.0</span>
       </div>
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>
@@ -378,6 +389,15 @@
   </div>
   <div class="drawer-body">
     <div class="sec">
+      <div class="sec-title">排序</div>
+      <div class="sort-row" id="sort-list">
+        <button class="sort-btn" data-sort="updated">最近更新</button>
+        <button class="sort-btn" data-sort="created">最近添加</button>
+        <button class="sort-btn" data-sort="title">标题 A→Z</button>
+        <button class="sort-btn" data-sort="cat">按分类</button>
+      </div>
+    </div>
+    <div class="sec">
       <div class="sec-title">分类</div>
       <div id="cat-list"></div>
     </div>
@@ -386,6 +406,7 @@
       <input class="tag-search" id="tag-search" placeholder="筛选标签…" />
       <div class="tag-wrap" id="tag-list"></div>
       <button class="link-btn" id="btn-more-tags">展开全部</button>
+      <div class="tag-hint" id="tag-hint"></div>
     </div>
   </div>
   <div class="drawer-foot">
@@ -412,13 +433,16 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.0.0';
+  var VERSION = '2.1.0';
   var LS_KEY = 'ouyang-pwd';
 
   var $ = function (id) { return document.getElementById(id); };
   var bookmarks = [], categories = [], catMap = {}, byId = {}, updatedAt = '';
   var catCounts = {}, groupIds = {}, groupOrder = [], tagCounts = [];
+  var commonTags = [], orphanCount = 0;
   var cat = 'all', tag = null, kw = '', tagQ = '', showAllTags = false;
+  var sortMode = 'updated';
+  try { var _sm = localStorage.getItem('ouyang-sort'); if (_sm) sortMode = _sm; } catch (e) {}
   var expanded = {};
   var openedFromList = false, currentId = null;
 
@@ -433,6 +457,27 @@
     return arr;
   }
   function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ''); } catch (e) { return u || ''; } }
+  // 代码托管类站点 owner/repo 结构清晰，且同域名条目占比高（github 独占 30%）
+  var PATH_HOSTS = { 'github.com': 2, 'gitlab.com': 2, 'gitee.com': 2, 'huggingface.co': 2 };
+  function displayHost(b) {
+    var u;
+    try { u = new URL(b.url); } catch (e) { return String(b.url || ''); }
+    var h = u.hostname.replace(/^www\./, '');
+    var n = PATH_HOSTS[h];
+    if (n) {
+      var segs = u.pathname.split('/').filter(Boolean).slice(0, n);
+      if (segs.length) return segs.join('/');
+    }
+    return h;
+  }
+  // 高亮第一处命中：先按原文定位，再分段转义，避免把实体编码写进字符串
+  function hl(text, key) {
+    var raw = String(text == null ? '' : text);
+    if (!key) return esc(raw);
+    var i = raw.toLowerCase().indexOf(key.toLowerCase());
+    if (i < 0) return esc(raw);
+    return esc(raw.slice(0, i)) + '<mark class="hl">' + esc(raw.slice(i, i + key.length)) + '</mark>' + esc(raw.slice(i + key.length));
+  }
   function letterOf(u) { var h = hostOf(u); return (h.charAt(0) || '?').toUpperCase(); }
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function fmtDate(ts) { if (!ts) return ''; var d = new Date(ts); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -485,6 +530,7 @@
         $('gate').classList.add('hidden');
         $('app').classList.remove('hidden');
         $('brand-ver').textContent = 'v' + VERSION;
+        syncSort();
         buildDrawer();
         renderList();
         route(true);
@@ -513,6 +559,9 @@
 
     tagCounts = Object.keys(tagTmp).map(function (t) { return { name: t, n: tagTmp[t] }; })
       .sort(function (a, b) { return b.n - a.n || a.name.localeCompare(b.name); });
+    // 只出现一次的标签多为收藏时顺手打的，不占列表位置，但仍可被标签搜索命中
+    commonTags = tagCounts.filter(function (t) { return t.n >= 2; });
+    orphanCount = tagCounts.length - commonTags.length;
 
     categories.forEach(function (c) {
       if (!catCounts[c.id]) return;
@@ -552,7 +601,24 @@
           || (b.tags || []).some(function (t) { return String(t).toLowerCase().indexOf(k) >= 0; });
       });
     }
-    return list.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+    return sorted(list);
+  }
+
+  function sorted(list) {
+    var arr = list.slice();
+    if (sortMode === 'created') {
+      arr.sort(function (a, b) { return (b.createdAt || 0) - (a.createdAt || 0) || (b.updatedAt || 0) - (a.updatedAt || 0); });
+    } else if (sortMode === 'title') {
+      arr.sort(function (a, b) { return String(a.title || '').localeCompare(String(b.title || ''), 'zh-CN'); });
+    } else if (sortMode === 'cat') {
+      arr.sort(function (a, b) {
+        var na = catName(a.categoryId) || '\uffff', nb = catName(b.categoryId) || '\uffff';
+        return na.localeCompare(nb, 'zh-CN') || (b.updatedAt || 0) - (a.updatedAt || 0);
+      });
+    } else {
+      arr.sort(function (a, b) { return (b.updatedAt || 0) - (a.updatedAt || 0); });
+    }
+    return arr;
   }
 
   function renderList() {
@@ -583,7 +649,9 @@
       var d = new Date(updatedAt);
       right = '<span class="pulse"></span><span>' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + '</span>';
     }
-    $('stats').innerHTML = '<span>显示 <b>' + n + '</b> / 共 <b>' + bookmarks.length + '</b> 条</span>' +
+    $('stats').innerHTML = '<span>' + (kw
+      ? '“' + esc(kw) + '” 命中 <b>' + n + '</b> 条'
+      : '显示 <b>' + n + '</b> / 共 <b>' + bookmarks.length + '</b> 条') + '</span>' +
       '<span class="right">' + right + '</span>';
   }
 
@@ -602,15 +670,15 @@
     grid.innerHTML = list.map(function (b, i) {
       var name = catName(b.categoryId);
       var tags = (b.tags || []).slice(0, 3).map(function (t) {
-        return '<span class="chip-tag">#' + esc(t) + '</span>';
+        return '<span class="chip-tag">#' + hl(t, kw) + '</span>';
       }).join('');
       var delay = ' style="--i:' + (i < 40 ? i : 0) + '"';
       return '<article class="card"' + delay + ' data-id="' + esc(b.id) + '">' +
         '<div class="card-top">' + favHtml(b.favicon, 'fav') +
-          '<div class="card-titles"><div class="card-title">' + esc(b.title || b.url || '(无标题)') + '</div>' +
-          '<div class="card-host">' + esc(hostOf(b.url)) + '</div></div>' +
+          '<div class="card-titles"><div class="card-title">' + hl(b.title || b.url || '(无标题)', kw) + '</div>' +
+          '<div class="card-host" title="' + esc(hostOf(b.url)) + '">' + hl(displayHost(b), kw) + '</div></div>' +
         '</div>' +
-        (b.description ? '<p class="card-desc">' + esc(b.description) + '</p>' : '') +
+        (b.description ? '<p class="card-desc">' + hl(b.description, kw) + '</p>' : '') +
         '<div class="card-foot">' +
           (name ? '<span class="chip-cat">' + esc(shortCat(name)) + '</span>' : '') + tags +
           '<span class="card-date">' + fmtDate(b.updatedAt) + '</span>' +
@@ -641,18 +709,25 @@
 
   function buildTags() {
     var q = tagQ.toLowerCase();
-    var list = tagCounts.filter(function (t) { return !q || t.name.toLowerCase().indexOf(q) >= 0; });
-    var limit = (showAllTags || q) ? list.length : Math.min(30, list.length);
-    var html = list.slice(0, limit).map(function (t) {
+    // 无搜索时只列出现 ≥2 次的标签；搜索时在全部标签里找，孤儿标签依然可被检索到
+    var pool = q ? tagCounts.filter(function (t) { return t.name.toLowerCase().indexOf(q) >= 0; }) : commonTags;
+    var limit = (showAllTags || q) ? pool.length : Math.min(30, pool.length);
+    var html = pool.slice(0, limit).map(function (t) {
       return '<button class="tag-pill" data-tag="' + esc(t.name) + '">' + esc(t.name) + '<span class="n">' + t.n + '</span></button>';
     }).join('');
     if (!html) html = '<span style="font-size:12px;color:var(--text-3);padding:2px 0;">没有匹配的标签</span>';
     $('tag-list').innerHTML = html;
-    var more = $('btn-more-tags');
-    if (q) { more.style.display = 'none'; }
-    else {
-      more.style.display = 'block';
-      more.textContent = showAllTags ? '收起' : '展开全部（' + tagCounts.length + '）';
+
+    var more = $('btn-more-tags'), hint = $('tag-hint');
+    if (q) {
+      more.style.display = 'none';
+      hint.innerHTML = '';
+    } else {
+      more.style.display = commonTags.length > 30 ? 'block' : 'none';
+      more.textContent = showAllTags ? '收起' : '展开全部（' + commonTags.length + '）';
+      hint.innerHTML = orphanCount
+        ? '另有 <b>' + orphanCount + '</b> 个标签仅出现一次，未列入，可用上方搜索框查找'
+        : '';
     }
     syncDrawer();
   }
@@ -769,6 +844,22 @@
   $('btn-more-tags').addEventListener('click', function () {
     showAllTags = !showAllTags;
     buildTags();
+  });
+
+  function syncSort() {
+    var nodes = $('sort-list').querySelectorAll('[data-sort]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].classList.toggle('is-active', nodes[i].getAttribute('data-sort') === sortMode);
+    }
+  }
+  $('sort-list').addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-sort]');
+    if (!btn) return;
+    sortMode = btn.getAttribute('data-sort');
+    try { localStorage.setItem('ouyang-sort', sortMode); } catch (err) {}
+    syncSort();
+    renderList();
+    if (window.scrollTo) window.scrollTo(0, 0);
   });
 
   $('btn-clear').addEventListener('click', function () {
