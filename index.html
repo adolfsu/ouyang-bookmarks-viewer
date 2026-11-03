@@ -52,12 +52,14 @@
   button { font-family: inherit; }
   .hidden { display: none !important; }
 
-  .gate { position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+  .gate { position: relative; z-index: 1; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; transition: opacity .3s ease; }
+  .gate.leave { opacity: 0; pointer-events: none; }
   .gate-card {
     width: 100%; max-width: 358px; text-align: center; padding: 28px 24px 24px;
     background: linear-gradient(180deg, rgba(16,29,49,.94), rgba(11,21,36,.97));
     border: 1px solid var(--border); border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    animation: rise2 .5s cubic-bezier(.22,.9,.28,1) backwards;
   }
   .gate-mark { width: 44px; height: 44px; margin: 0 auto 16px; border-radius: 12px; border: 1px solid var(--border-2); background: var(--accent-soft); position: relative; }
   .gate-mark::after { content: ''; position: absolute; inset: 12px; border-radius: 6px; border: 1.5px solid var(--accent); opacity: .9; }
@@ -81,7 +83,8 @@
   .gate-err { margin: 12px 0 0; font-size: 12.5px; color: var(--danger); min-height: 17px; }
   .gate-hint { margin: 14px 0 0; font-size: 10.5px; color: var(--text-3); font-family: var(--mono); }
 
-  .app { position: relative; z-index: 1; }
+  .app { position: relative; z-index: 1; animation: appIn .55s cubic-bezier(.22,.9,.28,1) backwards; }
+  @keyframes appIn { from { opacity: 0; transform: translateY(10px); } }
   .topbar {
     position: sticky; top: 0; z-index: 30;
     background: rgba(5,10,18,.88);
@@ -145,10 +148,15 @@
     padding: 14px; border-radius: var(--radius); overflow: hidden;
     background: linear-gradient(180deg, rgba(16,29,49,.72), rgba(11,21,36,.92));
     border: 1px solid var(--border);
-    animation: rise .3s ease both; animation-delay: calc(var(--i, 0) * 16ms);
-    transition: border-color .2s, transform .2s, background .2s;
+    opacity: 0; transform: translateY(12px);
+    transition: transform .16s ease, border-color .2s, background .2s, box-shadow .25s;
   }
-  @keyframes rise { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: none; } }
+  .card.in {
+    opacity: 1; transform: none;
+    animation: cardIn .42s cubic-bezier(.22,.9,.28,1) backwards;
+    animation-delay: calc(var(--i, 0) * 16ms);
+  }
+  @keyframes cardIn { from { opacity: 0; transform: translateY(12px); } }
   .card::before {
     content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
     background: linear-gradient(90deg, var(--accent), rgba(79,209,255,0));
@@ -163,7 +171,8 @@
   .card:hover { border-color: var(--border-2); background: linear-gradient(180deg, rgba(20,36,58,.85), rgba(11,21,36,.95)); }
   .card:hover::before { transform: scaleX(1); }
   .card:hover::after { border-color: rgba(79,209,255,.7); }
-  .card:active { transform: scale(.995); }
+  .card.in:hover { transform: translateY(-3px); box-shadow: 0 10px 26px rgba(0,0,0,.4); }
+  .card.in:active { transform: scale(.988); box-shadow: none; }
 
   .card-top { display: flex; gap: 10px; align-items: flex-start; min-width: 0; padding-right: 22px; }
   .fav {
@@ -198,7 +207,7 @@
     color: var(--accent); background: rgba(79,209,255,.10); border: 1px solid rgba(79,209,255,.3);
     font-size: 13px; line-height: 1; transition: background .18s, border-color .18s, transform .12s;
   }
-  .card-jump:hover { background: rgba(79,209,255,.22); border-color: rgba(79,209,255,.6); }
+  .card-jump:hover { background: rgba(79,209,255,.22); border-color: rgba(79,209,255,.6); transform: translate(1.5px, -1.5px); }
   .card-jump:active { transform: scale(.92); }
 
   .empty { text-align: center; padding: 70px 20px; color: var(--text-3); }
@@ -229,7 +238,13 @@
   .row {
     display: flex; align-items: center; gap: 8px; width: 100%; padding: 8px 16px; border: none; background: none;
     color: var(--text-2); font-size: 13px; text-align: left; cursor: pointer; transition: color .18s, background .18s;
+    position: relative;
   }
+  .row::before {
+    content: ''; position: absolute; left: 5px; top: 24%; bottom: 24%; width: 2px; border-radius: 1px;
+    background: var(--accent); transform: scaleY(0); transition: transform .28s cubic-bezier(.22,.9,.28,1);
+  }
+  .row.is-active::before { transform: scaleY(1); }
   .row:hover { color: var(--text); background: rgba(79,209,255,.05); }
   .row.is-active { color: var(--accent); background: rgba(79,209,255,.09); }
   .row .n { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--text-3); }
@@ -255,6 +270,8 @@
   }
   .tag-pill:hover { color: var(--text); border-color: var(--border-2); }
   .tag-pill.is-active { background: var(--accent-soft); border-color: rgba(79,209,255,.45); color: var(--accent); }
+  .sort-btn.is-active, .tag-pill.is-active, .active-chip { animation: pop .3s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes pop { 0% { transform: scale(.82); } 55% { transform: scale(1.07); } 100% { transform: none; } }
   .tag-pill .n { font-family: var(--mono); font-size: 10px; opacity: .6; margin-left: 3px; }
   .link-btn { display: block; margin: 10px 16px 0; padding: 6px 0; background: none; border: none; color: var(--accent); font-size: 12px; cursor: pointer; text-align: left; }
   .link-btn:hover { text-decoration: underline; }
@@ -283,6 +300,14 @@
     transition: opacity .22s ease, transform .26s cubic-bezier(.22,.9,.28,1);
   }
   .detail.on { opacity: 1; pointer-events: auto; transform: none; }
+  .detail.on .detail-body > * { animation: rise2 .45s cubic-bezier(.22,.9,.28,1) backwards; }
+  .detail.on .detail-body > *:nth-child(1) { animation-delay: 40ms; }
+  .detail.on .detail-body > *:nth-child(2) { animation-delay: 95ms; }
+  .detail.on .detail-body > *:nth-child(3) { animation-delay: 150ms; }
+  .detail.on .detail-body > *:nth-child(4) { animation-delay: 205ms; }
+  .detail.on .detail-body > *:nth-child(5) { animation-delay: 260ms; }
+  .detail.on .detail-body > *:nth-child(n+6) { animation-delay: 305ms; }
+  @keyframes rise2 { from { opacity: 0; transform: translateY(10px); } }
   .detail-bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); background: rgba(5,10,18,.9); }
   .detail-bar .t { font-family: var(--mono); font-size: 9.5px; letter-spacing: .2em; color: var(--text-3); text-transform: uppercase; }
   .detail-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
@@ -332,10 +357,27 @@
   }
   .toast.on { opacity: 1; transform: translate(-50%, 0); }
 
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
-    html { scroll-behavior: auto; }
+  .set-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 16px 2px; }
+  .set-row .set-label { font-size: 13px; color: var(--text-2); }
+  .set-row .set-sub { font-size: 10.5px; color: var(--text-3); margin-top: 2px; }
+  .switch {
+    position: relative; width: 40px; height: 22px; border-radius: 11px; flex-shrink: 0; cursor: pointer;
+    background: rgba(90,170,255,.12); border: 1px solid var(--border);
+    transition: background .25s, border-color .25s; padding: 0;
   }
+  .switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--text-3); transition: transform .28s cubic-bezier(.34,1.56,.64,1), background .25s;
+  }
+  .switch.on { background: rgba(79,209,255,.28); border-color: rgba(79,209,255,.5); }
+  .switch.on::after { transform: translateX(18px); background: var(--accent); }
+
+  /* 动效开关是唯一权威：系统 prefers-reduced-motion 只决定开关初始值（见 JS） */
+  html.no-anim *, html.no-anim *::before, html.no-anim *::after {
+    animation-duration: .001ms !important; animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0ms !important;
+  }
+  html.no-anim .card { opacity: 1 !important; transform: none !important; }
 </style>
 </head>
 <body>
@@ -360,7 +402,7 @@
       <div class="brand">
         <span class="brand-dot"></span>
         <span class="brand-text">欧阳的收藏夹</span>
-        <span class="brand-ver" id="brand-ver">v2.1.0</span>
+        <span class="brand-ver" id="brand-ver">v2.2.0</span>
       </div>
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.4-3.4"/></svg>
@@ -408,6 +450,16 @@
       <button class="link-btn" id="btn-more-tags">展开全部</button>
       <div class="tag-hint" id="tag-hint"></div>
     </div>
+    <div class="sec">
+      <div class="sec-title">界面</div>
+      <div class="set-row">
+        <div>
+          <div class="set-label">动画效果</div>
+          <div class="set-sub">卡片浮现 · 按压反馈 · 弹性选中</div>
+        </div>
+        <button class="switch" id="sw-anim" role="switch" aria-checked="true" aria-label="动画效果开关"></button>
+      </div>
+    </div>
   </div>
   <div class="drawer-foot">
     <span class="c" id="drawer-count">—</span>
@@ -433,8 +485,9 @@
 (function () {
   'use strict';
 
-  var VERSION = '2.1.0';
+  var VERSION = '2.2.0';
   var LS_KEY = 'ouyang-pwd';
+  var ANIM_KEY = 'ouyang-anim';
 
   var $ = function (id) { return document.getElementById(id); };
   var bookmarks = [], categories = [], catMap = {}, byId = {}, updatedAt = '';
@@ -527,7 +580,8 @@
         updatedAt = data.updatedAt || '';
         buildIndex();
         try { localStorage.setItem(LS_KEY, pwd); } catch (e) {}
-        $('gate').classList.add('hidden');
+        $('gate').classList.add('leave');
+        setTimeout(function () { $('gate').classList.add('hidden'); }, 300);
         $('app').classList.remove('hidden');
         $('brand-ver').textContent = 'v' + VERSION;
         syncSort();
@@ -657,8 +711,29 @@
 
   function favHtml(url, cls) {
     var letter = esc(letterOf(url));
-    var img = url ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.remove()" />' : '';
+    var img = url ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" style="opacity:0;transition:opacity .4s ease" onload="this.style.opacity=1" onerror="this.remove()" />' : '';
     return '<div class="' + cls + '">' + img + letter + '</div>';
+  }
+
+  // 滚动渐入：卡片进入视口时才播放入场动画，首屏按 --i 逐张延迟
+  var cardIO = null;
+  if (typeof IntersectionObserver !== 'undefined') {
+    cardIO = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        if (entries[i].isIntersecting) {
+          entries[i].target.classList.add('in');
+          cardIO.unobserve(entries[i].target);
+        }
+      }
+    }, { rootMargin: '60px 0px' });
+  }
+  function mountCards(grid) {
+    var cards = grid.querySelectorAll('.card');
+    if (!cardIO) {
+      for (var i = 0; i < cards.length; i++) cards[i].classList.add('in');
+      return;
+    }
+    for (var j = 0; j < cards.length; j++) cardIO.observe(cards[j]);
   }
 
   function renderGrid(list) {
@@ -687,6 +762,7 @@
         '<a class="card-jump" href="' + esc(b.url) + '" target="_blank" rel="noopener noreferrer" aria-label="直接打开网站">↗</a>' +
       '</article>';
     }).join('');
+    mountCards(grid);
   }
 
   function buildDrawer() {
@@ -861,6 +937,30 @@
     renderList();
     if (window.scrollTo) window.scrollTo(0, 0);
   });
+
+  // 动效开关：系统 prefers-reduced-motion 只决定初始值，此后以本开关为准
+  var animOn = true;
+  try {
+    var _savedAnim = localStorage.getItem(ANIM_KEY);
+    if (_savedAnim === null) {
+      animOn = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } else {
+      animOn = _savedAnim === '1';
+    }
+  } catch (e) {}
+  function applyAnim() {
+    document.documentElement.classList.toggle('no-anim', !animOn);
+    var sw = $('sw-anim');
+    sw.classList.toggle('on', animOn);
+    sw.setAttribute('aria-checked', animOn ? 'true' : 'false');
+  }
+  $('sw-anim').addEventListener('click', function () {
+    animOn = !animOn;
+    try { localStorage.setItem(ANIM_KEY, animOn ? '1' : '0'); } catch (e) {}
+    applyAnim();
+    toast(animOn ? '动画已开启' : '动画已关闭');
+  });
+  applyAnim();
 
   $('btn-clear').addEventListener('click', function () {
     cat = 'all'; tag = null; kw = ''; tagQ = '';
